@@ -72,8 +72,11 @@ class Wav2LipSync:
         audio_clip = mp.AudioFileClip(audio_path)
 
         final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
+        image_clip.close()
+        audio_clip.close()
 
         final_video.write_videofile(output_path, codec='libx264', fps=24)
+        final_video.close()
 
         audio_thread = threading.Thread(target=lambda: setattr(audio_thread, 'result', self.get_link(audio_path)))
         video_thread = threading.Thread(target=lambda: setattr(video_thread, 'result', self.get_link(output_path)))
@@ -121,5 +124,7 @@ class Wav2LipSync:
         video = mp.VideoFileClip(video_url)
         cropped_video = video.crop(y1=video.h * 2 // 3, y2=0)
         cropped_video.write_videofile(output_path, codec='libx264', fps=24)
+        video.close()
+        cropped_video.close()
 
         return output_path
