@@ -58,7 +58,7 @@ class Wav2LipSync:
     def get_link(self, path):
         return self.get_direct_download_link(self.upload_file(path).split('/')[-2])
 
-    def __call__(self, image_path, audio_path, output_path):
+    def __call__(self, image_path, audio_path, output_path=None):
         return self.wav2lip(image_path, audio_path, output_path)
     
     def wav2lip(self, image_path, audio_path, output_path=None):
