@@ -11,10 +11,12 @@ from PIL import Image
 import tempfile
 
 class Wav2LipSync:
-    def __init__(self, api_key, url, credentials_path):
+    def __init__(self, api_key, url="https://api.synclabs.so/lipsync", model="wav2lip++", credentials_path="credentials.json", crop_video = False):
         self.api_key = api_key
         self.url = url
+        self.model = model
         self.credentials_path = credentials_path
+        self.crop_video = crop_video
 
     def upload_file_to_drive(self, file_path):
         SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -64,11 +66,15 @@ class Wav2LipSync:
     def wav2lip(self, image_path, audio_path, output_path=None):
         original_image = Image.open(image_path)
         width, height = original_image.size
-        new_height = height * 3
-        new_image = Image.new("RGB", (width, new_height), (255, 255, 255))
-        new_image.paste(original_image, (0, new_height - height))
+        
+        if self.crop_video:
+            new_height = height * 3
+            new_image = Image.new("RGB", (width, new_height), (255, 255, 255))
+            new_image.paste(original_image, (0, new_height - height))
+            image_array = np.array(new_image)
+        else:
+            image_array = np.array(original_image)
 
-        image_array = np.array(new_image)
         image_clip = mp.ImageClip(image_array)
         audio_clip = mp.AudioFileClip(audio_path)
 
@@ -96,7 +102,7 @@ class Wav2LipSync:
         print("Video link:", video_direct_link)
 
         payload = {
-            "model": "wav2lip++",
+            "model": self.model,
             "audioUrl": audio_direct_link,
             "videoUrl": video_direct_link
         }
@@ -108,7 +114,7 @@ class Wav2LipSync:
         response = requests.request("POST", self.url, json=payload, headers=headers)
 
         id = response.json().get('id')
-        print(id)
+        print(f'Lip ID: {id}')
 
         time = 0
         status = "OKAY"
@@ -116,17 +122,22 @@ class Wav2LipSync:
         while status != "COMPLETED":
             get = requests.request("GET", f'{self.url}/{id}', headers=headers)
             status = get.json().get('status')
-            print(f"{status} {time}", end="\r")
+            print(f"Lip Status: {status} {time}", end="\r")
             time += 1
             sleep(1)
 
         video_url = get.json().get('videoUrl')
-        print(video_url)
+        print(f'Lip result: {video_url}')
 
         video = mp.VideoFileClip(video_url)
-        cropped_video = video.crop(y1=video.h * 2 // 3, y2=0)
-        cropped_video.write_videofile(output_path, codec='libx264', fps=24)
+
+        if self.crop_video:
+            cropped_video = video.crop(y1=video.h * 2 // 3, y2=0)
+            cropped_video.write_videofile(output_path, codec='libx264', fps=24)
+            cropped_video.close()
+        else:
+            video.write_videofile(output_path, codec='libx264', fps=24)
+
         video.close()
-        cropped_video.close()
 
         return output_path
