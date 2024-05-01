@@ -8,6 +8,7 @@ from time import sleep
 import threading
 import numpy as np
 from PIL import Image
+import tempfile
 
 class Wav2LipSync:
     def __init__(self, api_key, url, credentials_path):
@@ -60,7 +61,7 @@ class Wav2LipSync:
     def __call__(self, image_path, audio_path, output_path):
         return self.wav2lip(image_path, audio_path, output_path)
     
-    def wav2lip(self, image_path, audio_path, output_path):
+    def wav2lip(self, image_path, audio_path, output_path=None):
         original_image = Image.open(image_path)
         width, height = original_image.size
         new_height = height * 3
@@ -72,8 +73,9 @@ class Wav2LipSync:
         audio_clip = mp.AudioFileClip(audio_path)
 
         final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
-        image_clip.close()
-        audio_clip.close()
+
+        if output_path is None:
+            output_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
 
         final_video.write_videofile(output_path, codec='libx264', fps=24)
         final_video.close()
