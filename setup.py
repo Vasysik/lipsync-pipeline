@@ -2,10 +2,16 @@ from setuptools import setup, find_packages
 
 setup(
     name='lipsync_pipeline',
-    version='0.0.2',
+    version='0.0.3',
     description='LipSync Pipeline',
     author='Amadeus (Wasys)',
     packages=find_packages(), 
-    install_requires=[],
+    install_requires=[
+        'google-cloud-storage',
+        'google-api-python-client',
+        'Pillow',
+        'numpy',
+        'moviepy'
+    ],
     Scripts=['lipsync_pipeline/functions.py']
 )
