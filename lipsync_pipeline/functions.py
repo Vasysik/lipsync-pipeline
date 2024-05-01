@@ -1,4 +1,4 @@
-import moviepy.editor as mp
+from moviepy.editor import ImageClip, AudioFileClip, VideoFileClip
 import requests
 from google.oauth2 import service_account
 from googleapiclient.http import MediaFileUpload
@@ -75,8 +75,8 @@ class Wav2LipSync:
         else:
             image_array = np.array(original_image)
 
-        image_clip = mp.ImageClip(image_array)
-        audio_clip = mp.AudioFileClip(audio_path)
+        image_clip = ImageClip(image_array)
+        audio_clip = AudioFileClip(audio_path)
 
         final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
 
@@ -129,7 +129,7 @@ class Wav2LipSync:
         video_url = get.json().get('videoUrl')
         print(f'Lip result: {video_url}')
 
-        video = mp.VideoFileClip(video_url)
+        video = VideoFileClip(video_url)
 
         if self.crop_video:
             cropped_video = video.crop(y1=video.h * 2 // 3, y2=0)
