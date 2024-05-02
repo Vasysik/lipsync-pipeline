@@ -80,14 +80,13 @@ class Wav2LipSync:
 
         final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
 
-        if output_path is None:
-            output_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
+        video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
 
-        final_video.write_videofile(output_path, codec='libx264', fps=24)
+        final_video.write_videofile(video_path, codec='libx264', fps=24)
         final_video.close()
 
         audio_thread = threading.Thread(target=lambda: setattr(audio_thread, 'result', self.get_link(audio_path)))
-        video_thread = threading.Thread(target=lambda: setattr(video_thread, 'result', self.get_link(output_path)))
+        video_thread = threading.Thread(target=lambda: setattr(video_thread, 'result', self.get_link(video_path)))
 
         audio_thread.start()
         video_thread.start()
@@ -122,14 +121,22 @@ class Wav2LipSync:
         while status != "COMPLETED":
             get = requests.request("GET", f'{self.url}/{id}', headers=headers)
             status = get.json().get('status')
-            print(f"Lip Status: {status} {time}", end="\r")
+            print(f"Lip Status: {status} Time: {time}", end="\r")
             time += 1
             sleep(1)
 
         video_url = get.json().get('videoUrl')
-        print(f'Lip result: {video_url}')
 
-        video = VideoFileClip(video_url)
+        temp = tempfile.NamedTemporaryFile(suffix='.mp4')
+        temp.write(requests.get(video_url))
+        temp_path = temp.name
+
+        print(f'Lip result: {video_url} Temp: {temp_path}')
+
+        video = VideoFileClip(temp_path)
+
+        if output_path is None:
+            output_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
 
         if self.crop_video:
             cropped_video = video.crop(y1=video.h * 2 // 3, y2=0)
