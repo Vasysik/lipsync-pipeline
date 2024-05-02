@@ -127,7 +127,7 @@ class Wav2LipSync:
 
         video_url = get.json().get('videoUrl')
 
-        temp = tempfile.NamedTemporaryFile(suffix='.mp4')
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         temp.write(requests.get(video_url).content)
         temp_path = temp.name
 
@@ -145,6 +145,8 @@ class Wav2LipSync:
         else:
             video.write_videofile(output_path, codec='libx264', fps=24)
 
+        temp.close()
+        os.unlink(temp.name)
         video.close()
 
         return output_path
