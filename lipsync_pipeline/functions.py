@@ -128,7 +128,7 @@ class Wav2LipSync:
         video_url = get.json().get('videoUrl')
 
         temp = tempfile.NamedTemporaryFile(suffix='.mp4')
-        temp.write(requests.get(video_url))
+        temp.write(requests.get(video_url).content)
         temp_path = temp.name
 
         print(f'Lip result: {video_url} Temp: {temp_path}')
