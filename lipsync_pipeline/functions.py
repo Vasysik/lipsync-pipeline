@@ -1,4 +1,4 @@
-from moviepy.editor import ImageClip, AudioFileClip, VideoFileClip
+from moviepy.editor import ImageClip, AudioFileClip, VideoFileClip, ColorClip, CompositeVideoClip
 import requests
 from google.oauth2 import service_account
 from googleapiclient.http import MediaFileUpload
@@ -6,8 +6,6 @@ from googleapiclient.discovery import build
 import os
 from time import sleep
 import threading
-import numpy as np
-from PIL import Image
 import tempfile
 
 class Wav2LipSync:
@@ -60,31 +58,30 @@ class Wav2LipSync:
     def get_link(self, path):
         return self.get_direct_download_link(self.upload_file(path).split('/')[-2])
 
-    def __call__(self, image_path, audio_path, output_path=None):
-        return self.wav2lip(image_path, audio_path, output_path)
+    def __call__(self, file_path, audio_path, output_path=None):
+        return self.wav2lip(file_path, audio_path, output_path)
     
-    def wav2lip(self, image_path, audio_path, output_path=None):
-        original_image = Image.open(image_path)
-        width, height = original_image.size
-        
+    def wav2lip(self, file_path, audio_path, output_path=None):
+        if file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            image_clip = ImageClip(file_path)
+            audio_clip = AudioFileClip(audio_path)
+
+            final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
+            video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
+
+            final_video.write_videofile(video_path, codec='libx264', fps=24)
+            final_video.close()
+        elif file_path.lower().endswith(('.mp4', '.avi', '.mov')): video_path = file_path
+        else: raise ValueError("Unsupported file format")
+
         if self.crop_video:
-            new_height = height * 3
-            new_image = Image.new("RGB", (width, new_height), (255, 255, 255))
-            new_image.paste(original_image, (0, new_height - height))
-            image_array = np.array(new_image)
-        else:
-            image_array = np.array(original_image)
-
-        image_clip = ImageClip(image_array)
-        audio_clip = AudioFileClip(audio_path)
-
-        final_video = image_clip.set_audio(None).set_duration(audio_clip.duration)
-
-        video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
-
-        final_video.write_videofile(video_path, codec='libx264', fps=24)
-        final_video.close()
-
+            video = VideoFileClip(video_path)
+            video_path = tempfile.NamedTemporaryFile(suffix='.mp4').name
+            width, height = video.size
+            empty_clip = ColorClip(size=(width, height * 3), color=(0, 0, 0)).set_duration(video.duration)
+            cropped_video = CompositeVideoClip([empty_clip.set_pos(('center', 'top')), video.set_pos(('center', 'bottom'))])
+            cropped_video.write_videofile(video_path, codec='libx264', fps=video.fps)
+        
         audio_thread = threading.Thread(target=lambda: setattr(audio_thread, 'result', self.get_link(audio_path)))
         video_thread = threading.Thread(target=lambda: setattr(video_thread, 'result', self.get_link(video_path)))
 
@@ -118,7 +115,7 @@ class Wav2LipSync:
         time = 0
         status = "OKAY"
 
-        while status != "COMPLETED":
+        while status not in ["COMPLETED", "ERROR"]:
             get = requests.request("GET", f'{self.url}/{id}', headers=headers)
             status = get.json().get('status')
             print(f"Lip Status: {status} Time: {time}", end="\r")
@@ -143,7 +140,7 @@ class Wav2LipSync:
             cropped_video.write_videofile(output_path, codec='libx264', fps=24)
             cropped_video.close()
         else:
-            video.write_videofile(output_path, codec='libx264', fps=24)
+            video.write_videofile(output_path, codec='libx264', fps=video.fps)
 
         temp.close()
         os.unlink(temp.name)
